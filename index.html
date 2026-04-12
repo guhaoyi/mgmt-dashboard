@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雪梨经营管理看板</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0d0f14; --card:#151820; --card-hover:#1c2030; --border:#252a3a;
+  --accent:#4f9cf9; --accent-dim:rgba(79,156,249,0.12);
+  --green:#34d399; --green-dim:rgba(52,211,153,0.12);
+  --red:#f87171; --red-dim:rgba(248,113,113,0.12);
+  --yellow:#fbbf24; --yellow-dim:rgba(251,191,36,0.12);
+  --text:#e2e8f0; --text-dim:#64748b; --text-muted:#334155;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Noto Sans SC',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* HEADER */
+.header {
+  position:sticky; top:0; z-index:100;
+  background:rgba(13,15,20,0.94); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border); padding:0 28px;
+}
+.header-inner { max-width:1600px; margin:0 auto; display:flex; align-items:center; gap:16px; height:58px; }
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); animation:pl 2s ease-in-out infinite; }
+@keyframes pl { 0%,100%{opacity:1} 50%{opacity:.35} }
+.logo-text { font-size:15px; font-weight:700; letter-spacing:.03em; }
+.logo-sub { font-size:10px; color:var(--text-dim); margin-top:1px; }
+.hd-div { width:1px; height:22px; background:var(--border); }
+.hd-period { font-size:12px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+
+/* FILTER BAR */
+.filter-bar { background:var(--card); border-bottom:1px solid var(--border); padding:10px 28px; }
+.filter-inner { max-width:1600px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.filter-group { display:flex; align-items:center; gap:7px; }
+.filter-lbl { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; }
+select {
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  padding:5px 10px; border-radius:6px; font-size:12px; font-family:'Noto Sans SC',sans-serif;
+  cursor:pointer; outline:none; transition:border-color .2s;
+}
+select:hover,select:focus { border-color:var(--accent); }
+.range-btn {
+  background:var(--bg); border:1px solid var(--border); color:var(--text-dim);
+  padding:5px 11px; border-radius:5px; font-size:11px; cursor:pointer;
+  transition:all .15s; font-family:'Noto Sans SC',sans-serif;
+}
+.range-btn:hover { border-color:var(--accent); color:var(--text); }
+.range-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+.filter-sum { margin-left:auto; font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+
+/* TABS */
+.tab-bar { background:var(--card); border-bottom:1px solid var(--border); padding:0 28px; }
+.tab-row { max-width:1600px; margin:0 auto; display:flex; }
+.tab {
+  padding:11px 18px; font-size:13px; color:var(--text-dim); cursor:pointer;
+  border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap; font-weight:500;
+}
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* MAIN */
+.main { max-width:1600px; margin:0 auto; padding:20px 28px 40px; }
+
+/* SECTIONS */
+.section-lbl {
+  font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.1em;
+  margin:22px 0 10px; padding-left:8px; border-left:3px solid var(--accent);
+}
+.section-lbl:first-child { margin-top:0; }
+
+/* KPI GRID */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin-bottom:4px; }
+.kpi {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:16px 18px; transition:all .2s; position:relative; overflow:hidden;
+}
+.kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent); opacity:0; transition:opacity .2s; }
+.kpi:hover { border-color:rgba(79,156,249,.25); }
+.kpi:hover::before { opacity:1; }
+.kpi.green { --accent:var(--green); --accent-dim:var(--green-dim); }
+.kpi.red { --accent:var(--red); --accent-dim:var(--red-dim); }
+.kpi.yellow { --accent:var(--yellow); --accent-dim:var(--yellow-dim); }
+.kpi-lbl { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
+.kpi-val { font-size:22px; font-weight:700; font-family:'JetBrains Mono',monospace; letter-spacing:-.02em; }
+.kpi-sub { font-size:10px; color:var(--text-dim); margin-top:5px; font-family:'JetBrains Mono',monospace; }
+.kpi-chg { display:inline-block; font-size:10px; padding:1px 5px; border-radius:3px; margin-top:5px; font-family:'JetBrains Mono',monospace; }
+.kpi-chg.up { background:var(--green-dim); color:var(--green); }
+.kpi-chg.down { background:var(--red-dim); color:var(--red); }
+
+/* CHART GRID */
+.chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:14px; margin-bottom:14px; }
+.chart-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; }
+.chart-card.full { grid-column:1/-1; }
+.chart-hd { font-size:12px; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:7px; }
+.chart-hd::before { content:''; width:3px; height:12px; border-radius:2px; background:var(--accent); flex-shrink:0; }
+.chart-wrap { position:relative; height:260px; }
+.chart-wrap.tall { height:320px; }
+.chart-wrap.xtall { height:380px; }
+
+/* TABLE */
+.tbl-wrap { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.tbl { width:100%; border-collapse:collapse; font-size:11px; }
+.tbl th {
+  background:rgba(79,156,249,.05); color:var(--text-dim); padding:9px 12px;
+  text-align:right; font-weight:500; font-size:10px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+.tbl th:first-child { text-align:left; }
+.tbl td { padding:8px 12px; text-align:right; border-bottom:1px solid rgba(37,42,58,.45); font-family:'JetBrains Mono',monospace; font-size:11px; white-space:nowrap; }
+.tbl td:first-child { text-align:left; color:var(--text); font-family:'Noto Sans SC',sans-serif; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tr:hover td { background:rgba(79,156,249,.03); }
+.tbl .pos { color:var(--green); }
+.tbl .neg { color:var(--red); }
+.tbl .muted { color:var(--text-dim); }
+.tbl .total-row td { font-weight:600; background:rgba(79,156,249,.03); }
+
+/* PANELS */
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ANIMATIONS */
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.kpi,.chart-card,.tbl-wrap { animation:fadeUp .35s ease-out both; }
+.kpi:nth-child(1){animation-delay:.04s} .kpi:nth-child(2){animation-delay:.08s} .kpi:nth-child(3){animation-delay:.12s}
+.kpi:nth-child(4){animation-delay:.16s} .kpi:nth-child(5){animation-delay:.2s} .kpi:nth-child(6){animation-delay:.24s}
+
+@media(max-width:768px){
+  .chart-grid { grid-template-columns:1fr; }
+  .kpi-val { font-size:18px; }
+  .tab { padding:9px 12px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="logo-text">雪梨经营管理看板</div>
+        <div class="logo-sub">收入 · 成本 · 利润 2025–2026</div>
+      </div>
+    </div>
+    <div class="hd-div"></div>
+    <div class="hd-period" id="hPeriod">2025年1月 — 2026年3月</div>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="filter-inner">
+    <div class="filter-group">
+      <span class="filter-lbl">从</span>
+      <select id="sStart"></select>
+      <span style="color:var(--text-dim)">—</span>
+      <span class="filter-lbl">至</span>
+      <select id="sEnd"></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-lbl">快捷</span>
+      <button class="range-btn active" data-r="all">全部</button>
+      <button class="range-btn" data-r="6m">近6月</button>
+      <button class="range-btn" data-r="12m">近12月</button>
+      <button class="range-btn" data-r="y25">2025</button>
+      <button class="range-btn" data-r="y26">2026</button>
+    </div>
+    <div class="filter-group">
+      <span class="filter-lbl">视角</span>
+      <select id="sView">
+        <option value="monthly">月度</option>
+        <option value="cumulative">年度累计</option>
+      </select>
+    </div>
+    <div class="filter-sum" id="fSum">已选 15 个月</div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab-row">
+    <div class="tab active" data-tab="overview">📊 总览</div>
+    <div class="tab" data-tab="frontend">🌐 前端</div>
+    <div class="tab" data-tab="backend">📦 后端</div>
+    <div class="tab" data-tab="cost">💼 费用</div>
+    <div class="tab" data-tab="profit">📈 利润</div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- OVERVIEW -->
+<div class="panel active" id="pn-overview">
+  <div class="section-lbl">核心指标</div>
+  <div class="kpi-grid" id="kpi-ov"></div>
+  <div class="section-lbl">收入与利润走势</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">月度收入、成本、利润趋势</div>
+      <div class="chart-wrap tall"><canvas id="c-ov-main"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">净利润瀑布图</div>
+  <div class="chart-card full">
+    <div class="chart-hd">净利润构成（2025全年）</div>
+    <div class="chart-wrap tall"><canvas id="c-waterfall"></canvas></div>
+  </div>
+  <div class="section-lbl">月度利润明细</div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="t-ov"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<!-- FRONTEND -->
+<div class="panel" id="pn-frontend">
+  <div class="section-lbl">前端核心指标</div>
+  <div class="kpi-grid" id="kpi-fe"></div>
+  <div class="section-lbl">各平台收入</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">平台收入趋势</div>
+      <div class="chart-wrap tall"><canvas id="c-fe-rev"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hd">收入占比（2025全年）</div>
+      <div class="chart-wrap"><canvas id="c-fe-pie"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hd">成本占比（2025全年）</div>
+      <div class="chart-wrap"><canvas id="c-fe-cost-pie"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">成本结构</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">月度成本趋势</div>
+      <div class="chart-wrap tall"><canvas id="c-fe-cost"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">毛利趋势</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">前端毛利月度走势</div>
+      <div class="chart-wrap"><canvas id="c-fe-margin"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- BACKEND -->
+<div class="panel" id="pn-backend">
+  <div class="section-lbl">后端核心指标</div>
+  <div class="kpi-grid" id="kpi-be"></div>
+  <div class="section-lbl">收入构成</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">后端平台收入趋势</div>
+      <div class="chart-wrap tall"><canvas id="c-be-rev"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hd">平台占比（2025全年）</div>
+      <div class="chart-wrap"><canvas id="c-be-pie"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">毛利趋势</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">后端毛利月度走势</div>
+      <div class="chart-wrap"><canvas id="c-be-margin"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- COST -->
+<div class="panel" id="pn-cost">
+  <div class="section-lbl">费用总览</div>
+  <div class="kpi-grid" id="kpi-cost"></div>
+  <div class="section-lbl">人力成本</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">人力成本构成趋势</div>
+      <div class="chart-wrap xtall"><canvas id="c-labor"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">运营管理费</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">运营管理费主要项目趋势</div>
+      <div class="chart-wrap xtall"><canvas id="c-opex"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFIT -->
+<div class="panel" id="pn-profit">
+  <div class="section-lbl">利润全景</div>
+  <div class="kpi-grid" id="kpi-profit"></div>
+  <div class="section-lbl">利润结构对比</div>
+  <div class="chart-grid">
+    <div class="chart-card full">
+      <div class="chart-hd">前后端利润走势</div>
+      <div class="chart-wrap tall"><canvas id="c-profit-compare"></canvas></div>
+    </div>
+  </div>
+  <div class="section-lbl">完整利润表</div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="t-profit"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+</div><!-- main -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+// DATA — index 0=Jan25 … 14=Mar26
+// ══════════════════════════════════════════════════════════
+const D = {
+  // 前端收入
+  fe_rev:      [9343156,9002225,10358479,5629348,5417495,20239314,20870654,7902442,18802735,8163159,10204221,9084594,9358732,5363723,9579003],
+  fe_douyin:   [7435292,7142439,8402044,4056048,3986303,16817722,16677969,6129760,14485468,5961461,7796725,7457780,7396352,3912653,7657852],
+  fe_taobao:   [524526,466538,456822,401938,327596,767933,1005080,384394,1371264,626545,642332,450914,530290,376746,460689],
+  fe_xhs:      [686759,683025,672210,482257,582075,1454074,1763223,834079,1711270,777605,922950,507504,733789,551179,730897],
+  fe_pdd:      [78579,120676,138812,124532,113764,294964,391030,148894,248647,170806,148715,107889,125803,76953,143331],
+  fe_youzan:   [217735,179693,159624,123935,98117,182620,275179,122983,211708,0,0,0,0,0,0],
+  fe_video:    [217198,289505,366280,335792,209998,566744,432407,161776,401985,243193,361915,186695,186809,89148,217987],
+  fe_jd:       [90428,71476,109317,77516,62789,87597,201281,74880,108974,84772,84166,64231,81438,59877,86984],
+  fe_bili:     [28052,19303,30925,23334,25021,40764,76468,36266,30079,30079,19084,11144,29238,20242,23053],
+  fe_kuaishou: [64587,29569,22446,3997,11832,26895,54795,2632,264447,290382,252884,276720,286257,102849,265754],
+  fe_offline:  [0,0,0,0,0,0,0,0,-31107,-21684,-24551,21716,-11244,174077,-7545],
+  // 前端成本
+  fe_cost:     [7585897,7305413,8896941,5895757,5619077,17454519,18804351,8453736,18952622,7343522,8817348,7578563,8411722,4753158,8169590],
+  fe_ad:       [5317020,5560188,6563687,4470714,4240860,14012409,14231647,6456973,14608801,5102682,6831460,6175081,6767073,3665623,6436439],
+  fe_plat:     [332413,381626,339361,209423,263641,328104,702540,266898,597109,365659,384518,245731,342666,306201,315632],
+  fe_print:    [1256987,943549,1269499,762098,737025,2162777,2701703,1009270,2285326,1222433,1098382,650694,859671,442956,782145],
+  fe_live:     [0,20390,1518,65201,36273,88978,136046,88841,199276,123237,36790,157152,112848,2304,260574],
+  fe_sms:      [156661,0,138885,0,0,389,4711,212521,147553,93631,58491,71331,16745,144515,31434],
+  fe_express:  [522816,399660,583992,388319,341278,861862,1027703,419233,1114556,435880,407708,278575,312719,191559,343365],
+  // 前端毛利
+  fe_margin:   [1757260,1696812,1461538,-266409,-201582,2784796,2066303,-551293,-149887,819638,1386872,1506030,947011,610566,1409413],
+  // 后端收入
+  be_rev:      [8693822,9529576,11341745,9225410,8047039,15259802,18784351,11601513,14324782,11668149,12336505,12535744,11546882,6232101,10365376],
+  be_xt:       [8049664,8906752,10302398,8228130,7075155,13416694,18323932,11105786,13912584,10528836,11737719,12088654,10779413,5871021,9680973],
+  be_taobao:   [658926,643133,1071502,1014487,992977,1877431,503580,519509,461292,337805,379461,261732,530697,161506,489762],
+  be_youzan:   [0,0,0,0,0,0,0,0,0,417988,231865,191428,240935,167842,184715],
+  be_hk:       [0,0,0,0,0,0,0,0,0,0,0,0,10036,35848,29026],
+  be_offline:  [-14768,-20308,-32155,-17207,-21093,-34324,-43162,-23782,-49094,-23811,-12540,-6070,-14200,-4116,-19100],
+  // 后端成本
+  be_cost:     [294434,364210,559095,425023,408007,578736,813446,688682,630940,1057355,693978,602514,611806,457314,508688],
+  be_plat:     [89955,5186,69358,59855,35462,66030,137471,109246,12649,163590,144624,103559,154609,55790,119513],
+  be_print:    [171164,182656,236624,163200,159695,266082,395067,291524,321678,490792,246157,235733,195303,129486,115968],
+  be_app:      [-4866,137129,187247,154327,169811,179012,186628,201827,216695,324421,244348,230411,227147,228903,228903],
+  be_express:  [38181,39239,65865,47641,43039,67612,94280,86085,79919,78552,58849,32810,34747,43135,44304],
+  // 后端毛利
+  be_margin:   [8399388,9165367,10782650,8800387,7639032,14681066,17970905,10912831,13693841,10610794,11642527,11933231,10935075,5774787,9856688],
+  // 人力成本
+  labor:       [8023545,5992914,6343216,6823054,6870723,7517039,8661204,9292828,9333643,9731398,9613040,9027303,8779327,7940105,7432132],
+  labor_fixed: [3180075,3421979,3694801,4068029,4018154,4008560,4718281,5094069,5337838,5326723,5024953,4808774,4558502,4388124,4211728],
+  labor_bonus: [3445717,1049209,1107558,1326903,1131252,1657994,1737267,2024292,1613892,2037124,1932060,1884949,1708002,1572004,1367779],
+  labor_liwu:  [298936,336133,320437,206115,223587,298866,401532,452290,504818,497837,377497,402034,416808,385167,0],
+  labor_ot:    [25403,6989,1487,24335,81875,5377,8780,19224,16892,134987,103659,53954,114838,47143,61419],
+  labor_social:[546833,792018,771171,694853,905863,894894,1068775,1084628,1077675,1079762,991415,969385,927367,853331,853207],
+  labor_house: [385940,350526,251848,258948,272548,316448,307570,359774,319916,324421,286021,289999,274087,261327,261007],
+  labor_sev:   [0,0,0,0,4250,6000,27000,57894,43500,50982,0,611937,343955,517393,0,203250],
+  labor_welf:  [140641,36061,135913,239619,231161,307500,229028,202032,405711,323675,177223,269753,218724,346304,85876],
+  // 运营管理费
+  opex:        [881572,1120507,1035616,1259916,1170809,1674129,1800521,1306794,1218136,2431515,1178562,1538578,1383846,1169974,974396],
+  opex_rent:   [464021,528132,514738,526710,459199,601091,629272,623804,596241,618960,546350,581222,691604,651261,496893],
+  opex_consult:[0,0,0,0,8000,310000,371500,0,210000,30802,17434,93148,200100,0,0],
+  opex_office: [42102,161961,98495,125725,219315,85084,212341,159645,107027,185622,31066,257887,43463,118891,93219],
+  opex_travel: [135430,125347,66542,172115,48522,12188,142792,27099,36880,73126,43010,215682,20126,226790,70918],
+  opex_soft:   [4413,964,15432,130563,0,424217,399527,5980,0,0,159480,933,0,0,0],
+  opex_video:  [516,198020,0,0,500,90000,81029,0,0,0,0,0,876,5754,2341],
+  // 公司层面
+  ebit:        [-505729,2051945,3403818,717418,-402500,5489898,7509180,313209,3142062,-1552119,850926,1367350,771903,-3335291,1450160],
+  fe_be:       [1251531,3748757,4865356,451008,-604083,8274694,9575483,-238085,2992174,-732482,2237798,2873381,1718914,-2724725,2859573],
+  financial:   [246,153,-13091,121635,19814,-22328,151,524,-20841,584,-69456,-87196,605,683,-35688],
+ 理财:         [0,0,0,0,0,0,0,0,0,0,0,0,47890,28585,120061],
+  depr:        [205406,205640,244323,227676,280696,182330,260339,329302,119646,123986,177751,179999,139961,140228,140228],
+  non_op_in:   [2,147579,128390,22891,642,302774,398030,44326,93451,133882,-2,158746,38526,100809,529500],
+  non_op_out:  [682,932,449,10586,1007,681160,8,594,13847,-176468,0,0,25,0,2899],
+  pre_tax:     [1045198,3689610,4762065,114003,-904957,7736306,9713013,-524179,2972973,-546701,2129500,2939224,1664740,-2736242,3401694],
+  mgmt:        [108000,300679,1771434,2132377,1583377,1378679,350971,502000,660817,649098,1439597,1061038,449500,717500,387100],
+  tax:         [157000,154000,5649000,1502000,143000,8532000,22000,2530357,726000,66000,118000,2142000,122805,72874,1768000],
+  net_profit:  [780198,3234931,-2658369,-3520375,-2631335,-2174374,9340043,-3556536,1586157,-1261799,571903,-263814,1092433,-3526616,1246594],
+};
+
+const MONTHS_SHORT=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+const MONTHS_FULL=['2025年1月','2025年2月','2025年3月','2025年4月','2025年5月','2025年6月','2025年7月','2025年8月','2025年9月','2025年10月','2025年11月','2025年12月','2026年1月','2026年2月','2026年3月'];
+
+// ── HELPERS ──
+const N = v => (v==null||v===''?0:parseFloat(v));
+const sum = (arr,i0,i1) => { let s=0; for(let i=i0;i<=i1;i++) s+=N(arr[i]); return s; };
+const fmt = (v,d=1) => {
+  if(v==null||isNaN(v)) return '—';
+  const a=Math.abs(v);
+  if(a>=1e8) return (v<0?'-':'')+(a/1e8).toFixed(d)+'亿';
+  if(a>=1e6) return (v<0?'-':'')+(a/1e6).toFixed(d)+'万';
+  if(a>=1e3) return (v<0?'-':'')+(a/1e3).toFixed(d)+'k';
+  return String(Math.round(v));
+};
+const fmtN = v => (v>0?'+':'')+fmt(v);
+// cumulative sum over range
+const cum = (arr,range) => range.map((_,i)=>arr[range[0]].slice(0,i+1).reduce((a,b)=>a+b,0));
+
+let startIdx=0, endIdx=14;
+const getRange = () => {
+  const len = endIdx - startIdx + 1;
+  return Array.from({length:len},(_,i)=>startIdx+i);
+};
+const labels = () => {
+  const r = getRange();
+  return r.map(i => MONTHS_FULL[i]);
+};
+const lblShort = () => {
+  const r = getRange();
+  return r.map(i => {
+    const y = i<12?'2025':'2026';
+    return y+' '+MONTHS_SHORT[i%12];
+  });
+};
+const sliceRange = (arr) => {
+  const r = getRange();
+  return r.map(i=>N(arr[i]));
+};
+const annual25 = (arr) => arr.slice(0,12).reduce((a,b)=>a+N(b),0);
+const sumRange = (arr) => sliceRange(arr).reduce((a,b)=>a+b,0);
+const avgRange = (arr) => { const s=sliceRange(arr); return s.reduce((a,b)=>a+b,0)/s.length; };
+const lastVal = (arr) => N(arr[endIdx]);
+const prevVal = (arr) => endIdx>0 ? N(arr[endIdx-1]) : null;
+const momChg = (arr) => { const c=lastVal(arr), p=prevVal(arr); return p&&p!==0 ? (c-p)/Math.abs(p) : null; };
+const pct = v => v==null?'—':(v>=0?'+':'')+((v*100).toFixed(1))+'%';
+
+// ── CHART DEFAULTS ──
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = 'rgba(37,42,58,0.6)';
+Chart.defaults.font.family = "'JetBrains Mono','Noto Sans SC',sans-serif";
+Chart.defaults.font.size = 10;
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.legend.labels.padding = 12;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1e2235';
+Chart.defaults.plugins.tooltip.borderColor = '#3b4261';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.plugins.tooltip.callbacks = {
+  label: ctx => ctx.dataset.label+': '+fmt(ctx.parsed.y||ctx.parsed,2)
+};
+const COLORS = ['#4f9cf9','#34d399','#f87171','#fbbf24','#a78bfa','#fb923c','#38bdf8','#f472b6','#818cf8','#2dd4bf','#e879f9','#84cc16'];
+const alpha = (c,a) => { const m=c.match(/\w\w/g).map(x=>parseInt(x,16)); return `rgba(${m[0]},${m[1]},${m[2]},${a})`; };
+
+// ── CHART INSTANCES ──
+const charts = {};
+function makeChart(id, cfg) {
+  if(charts[id]) { charts[id].destroy(); }
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  charts[id] = new Chart(ctx, cfg);
+  return charts[id];
+}
+function lineDS(label, data, color, fill=false) {
+  return { label, data, borderColor:color, backgroundColor:fill?alpha(color,0.08):color, borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:0.3, fill };
+}
+function barDS(label, data, color) {
+  return { label, data, backgroundColor:alpha(color,0.7), borderColor:color, borderWidth:1, borderRadius:3 };
+}
+function stackBarDS(label, data, color) {
+  return { label, data, backgroundColor:alpha(color,0.75), borderColor:'transparent', borderWidth:0, borderRadius:2 };
+}
+
+// ── KPI BUILDER ──
+function kpiHTML(label, value, sub, cls='') {
+  return `<div class="kpi ${cls}"><div class="kpi-lbl">${label}</div><div class="kpi-val">${value}</div>${sub?'<div class="kpi-sub">'+sub+'</div>':''}</div>`;
+}
+function kpiWithChg(label, arr, cls='') {
+  const v = sumRange(arr);
+  const m = momChg(arr);
+  const chgHtml = m!=null ? `<span class="kpi-chg ${m>=0?'up':'down'}">${pct(m)} 环比</span>` : '';
+  return `<div class="kpi ${cls}"><div class="kpi-lbl">${label}</div><div class="kpi-val">${fmt(v)}</div><div class="kpi-sub">最近月: ${fmt(lastVal(arr))} ${chgHtml}</div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════════════
+function renderAll() {
+  const L = lblShort();
+  const R = getRange();
+
+  // ── OVERVIEW KPI ──
+  const totalRev = R.map(i=>N(D.fe_rev[i])+N(D.be_rev[i]));
+  const totalCost = R.map(i=>N(D.fe_cost[i])+N(D.be_cost[i])+N(D.labor[i])+N(D.opex[i]));
+  const totalRevSum = totalRev.reduce((a,b)=>a+b,0);
+  const totalCostSum = totalCost.reduce((a,b)=>a+b,0);
+  const feRevSum = sumRange(D.fe_rev);
+  const beRevSum = sumRange(D.be_rev);
+  const feMarginSum = sumRange(D.fe_margin);
+  const beMarginSum = sumRange(D.be_margin);
+  const netSum = sumRange(D.net_profit);
+  const laborSum = sumRange(D.labor);
+  const opexSum = sumRange(D.opex);
+
+  document.getElementById('kpi-ov').innerHTML = [
+    kpiHTML('总收入', fmt(totalRevSum), '前端 '+fmt(feRevSum)+' / 后端 '+fmt(beRevSum)),
+    kpiHTML('前端毛利', fmt(feMarginSum), '毛利率 '+pct(feRevSum?feMarginSum/feRevSum:0), feMarginSum>=0?'green':'red'),
+    kpiHTML('后端毛利', fmt(beMarginSum), '毛利率 '+pct(beRevSum?beMarginSum/beRevSum:0), 'green'),
+    kpiHTML('人力成本', fmt(laborSum), '占总收入 '+pct(totalRevSum?laborSum/totalRevSum:0), 'yellow'),
+    kpiHTML('运营管理费', fmt(opexSum), '月均 '+fmt(opexSum/R.length)),
+    kpiHTML('净利润', fmt(netSum), '净利率 '+pct(totalRevSum?netSum/totalRevSum:0), netSum>=0?'green':'red'),
+  ].join('');
+
+  // ── OVERVIEW MAIN CHART ──
+  const netData = sliceRange(D.net_profit);
+  makeChart('c-ov-main', {
+    type:'bar',
+    data:{
+      labels:L,
+      datasets:[
+        { label:'前端收入', data:sliceRange(D.fe_rev), backgroundColor:alpha('#4f9cf9',0.6), borderRadius:3, order:2 },
+        { label:'后端收入', data:sliceRange(D.be_rev), backgroundColor:alpha('#34d399',0.6), borderRadius:3, order:2 },
+        { ...lineDS('净利润', netData, '#fbbf24'), type:'line', yAxisID:'y1', order:1, pointRadius:3, borderWidth:2.5 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{stacked:true, grid:{display:false}},
+        y:{stacked:true, ticks:{callback:v=>fmt(v)}, grid:{color:'rgba(37,42,58,0.4)'}},
+        y1:{position:'right', ticks:{callback:v=>fmt(v)}, grid:{display:false}},
+      },
+      plugins:{legend:{position:'top'}, tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.parsed.y,2)}}}
+    }
+  });
+
+  // ── WATERFALL (2025 annual) ──
+  const wfLabels = ['前端收入','前端成本','前端毛利','后端收入','后端成本','后端毛利','人力成本','运营管理费','总经办','税金','其他','净利润'];
+  const feRev25 = annual25(D.fe_rev), feCost25 = annual25(D.fe_cost), feM25 = annual25(D.fe_margin);
+  const beRev25 = annual25(D.be_rev), beCost25 = annual25(D.be_cost), beM25 = annual25(D.be_margin);
+  const labor25 = annual25(D.labor), opex25 = annual25(D.opex);
+  const mgmt25 = annual25(D.mgmt), tax25 = annual25(D.tax);
+  const other25 = annual25(D.financial) + annual25(D.depr) - annual25(D.non_op_in) + annual25(D.non_op_out);
+  const net25 = annual25(D.net_profit);
+  const wfValues = [feRev25, -feCost25, feM25, beRev25, -beCost25, beM25, -labor25, -opex25, -mgmt25, -tax25, -other25, net25];
+  const wfColors = wfValues.map((v,i) => {
+    if(i===2||i===5||i===11) return v>=0?'#34d399':'#f87171'; // subtotals
+    return v>=0 ? alpha('#4f9cf9',0.7) : alpha('#f87171',0.7);
+  });
+  makeChart('c-waterfall', {
+    type:'bar',
+    data:{
+      labels:wfLabels,
+      datasets:[{data:wfValues.map(Math.abs), backgroundColor:wfColors, borderRadius:4}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{x:{ticks:{callback:v=>fmt(v)}, grid:{color:'rgba(37,42,58,0.3)'}}, y:{grid:{display:false}}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>{const i=ctx.dataIndex; return wfLabels[i]+': '+fmt(wfValues[i],2);}}}}
+    }
+  });
+
+  // ── OVERVIEW TABLE ──
+  const tOv = document.getElementById('t-ov');
+  let thHtml = '<tr><th>项目</th>'+L.map(l=>'<th>'+l+'</th>').join('')+'<th>合计</th></tr>';
+  tOv.querySelector('thead').innerHTML = thHtml;
+  const rows = [
+    {name:'前端收入',d:D.fe_rev}, {name:'后端收入',d:D.be_rev},
+    {name:'前端成本',d:D.fe_cost}, {name:'后端成本',d:D.be_cost},
+    {name:'前端毛利',d:D.fe_margin}, {name:'后端毛利',d:D.be_margin},
+    {name:'人力成本',d:D.labor}, {name:'运营管理费',d:D.opex},
+    {name:'总经办费用',d:D.mgmt}, {name:'税金',d:D.tax},
+    {name:'净利润',d:D.net_profit,cls:'total-row'},
+  ];
+  tOv.querySelector('tbody').innerHTML = rows.map(r=>{
+    const vals = sliceRange(r.d);
+    const s = vals.reduce((a,b)=>a+b,0);
+    const cls = r.cls||'';
+    return `<tr class="${cls}"><td>${r.name}</td>${vals.map(v=>`<td class="${v>=0?'':'neg'}">${fmt(v)}</td>`).join('')}<td class="${s>=0?'':'neg'}">${fmt(s)}</td></tr>`;
+  }).join('');
+
+  // ══════════════════════════════════════════════════════
+  // FRONTEND TAB
+  // ══════════════════════════════════════════════════════
+  document.getElementById('kpi-fe').innerHTML = [
+    kpiWithChg('前端收入', D.fe_rev),
+    kpiWithChg('前端成本', D.fe_cost, 'yellow'),
+    kpiWithChg('前端毛利', D.fe_margin, sumRange(D.fe_margin)>=0?'green':'red'),
+    kpiHTML('毛利率', pct(feRevSum?feMarginSum/feRevSum:0), '广告投放占比 '+pct(feRevSum?sumRange(D.fe_ad)/feRevSum:0)),
+    kpiHTML('抖音占比', pct(feRevSum?sumRange(D.fe_douyin)/feRevSum:0), '抖音收入 '+fmt(sumRange(D.fe_douyin))),
+  ].join('');
+
+  // FE revenue by platform
+  const fePlatforms = [
+    {name:'抖音',d:D.fe_douyin,c:COLORS[0]},
+    {name:'小红书',d:D.fe_xhs,c:COLORS[1]},
+    {name:'淘宝',d:D.fe_taobao,c:COLORS[2]},
+    {name:'视频号',d:D.fe_video,c:COLORS[3]},
+    {name:'拼多多',d:D.fe_pdd,c:COLORS[4]},
+    {name:'快手',d:D.fe_kuaishou,c:COLORS[5]},
+    {name:'京东',d:D.fe_jd,c:COLORS[6]},
+    {name:'B站',d:D.fe_bili,c:COLORS[7]},
+  ];
+  makeChart('c-fe-rev', {
+    type:'bar',
+    data:{labels:L, datasets:fePlatforms.map(p=>stackBarDS(p.name, sliceRange(p.d), p.c))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // FE pie
+  const fePieData = fePlatforms.map(p=>({name:p.name, val:sumRange(p.d)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+  makeChart('c-fe-pie', {
+    type:'doughnut',
+    data:{labels:fePieData.map(x=>x.name), datasets:[{data:fePieData.map(x=>x.val), backgroundColor:COLORS, borderWidth:0}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right'}}}
+  });
+
+  // FE cost pie
+  const feCostItems = [
+    {name:'广告投放',d:D.fe_ad}, {name:'平台费用',d:D.fe_plat}, {name:'印刷成本',d:D.fe_print},
+    {name:'直播成本',d:D.fe_live}, {name:'短信费用',d:D.fe_sms}, {name:'快递包材',d:D.fe_express},
+  ];
+  const feCostPie = feCostItems.map(x=>({name:x.name,val:sumRange(x.d)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+  makeChart('c-fe-cost-pie', {
+    type:'doughnut',
+    data:{labels:feCostPie.map(x=>x.name), datasets:[{data:feCostPie.map(x=>x.val), backgroundColor:COLORS.slice(0).reverse(), borderWidth:0}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right'}}}
+  });
+
+  // FE cost trend
+  makeChart('c-fe-cost', {
+    type:'bar',
+    data:{labels:L, datasets:feCostItems.map((x,i)=>stackBarDS(x.name, sliceRange(x.d), COLORS[i]))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // FE margin
+  const feMarginData = sliceRange(D.fe_margin);
+  makeChart('c-fe-margin', {
+    type:'bar',
+    data:{labels:L, datasets:[{
+      data:feMarginData,
+      backgroundColor:feMarginData.map(v=>v>=0?alpha('#34d399',0.65):alpha('#f87171',0.65)),
+      borderRadius:3
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{grid:{display:false}}, y:{ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{display:false}}
+    }
+  });
+
+  // ══════════════════════════════════════════════════════
+  // BACKEND TAB
+  // ══════════════════════════════════════════════════════
+  document.getElementById('kpi-be').innerHTML = [
+    kpiWithChg('后端收入(支付口径)', D.be_rev),
+    kpiWithChg('后端成本', D.be_cost, 'yellow'),
+    kpiWithChg('后端毛利', D.be_margin, 'green'),
+    kpiHTML('毛利率', pct(beRevSum?beMarginSum/beRevSum:0), '小鹅通占比 '+pct(beRevSum?sumRange(D.be_xt)/beRevSum:0)),
+  ].join('');
+
+  const bePlatforms = [
+    {name:'小鹅通',d:D.be_xt,c:COLORS[0]},
+    {name:'淘宝',d:D.be_taobao,c:COLORS[1]},
+    {name:'有赞',d:D.be_youzan,c:COLORS[2]},
+    {name:'香港店铺',d:D.be_hk,c:COLORS[3]},
+  ];
+  makeChart('c-be-rev', {
+    type:'bar',
+    data:{labels:L, datasets:bePlatforms.map(p=>stackBarDS(p.name, sliceRange(p.d), p.c))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  const bePieData = bePlatforms.map(p=>({name:p.name,val:sumRange(p.d)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+  makeChart('c-be-pie', {
+    type:'doughnut',
+    data:{labels:bePieData.map(x=>x.name), datasets:[{data:bePieData.map(x=>x.val), backgroundColor:COLORS, borderWidth:0}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right'}}}
+  });
+
+  const beMarginData = sliceRange(D.be_margin);
+  makeChart('c-be-margin', {
+    type:'bar',
+    data:{labels:L, datasets:[
+      barDS('后端毛利', beMarginData, '#34d399'),
+      {...lineDS('后端收入', sliceRange(D.be_rev), '#4f9cf9'), type:'line', yAxisID:'y1', order:0},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{grid:{display:false}},
+        y:{ticks:{callback:v=>fmt(v)}},
+        y1:{position:'right',ticks:{callback:v=>fmt(v)},grid:{display:false}},
+      },
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // ══════════════════════════════════════════════════════
+  // COST TAB
+  // ══════════════════════════════════════════════════════
+  document.getElementById('kpi-cost').innerHTML = [
+    kpiWithChg('人力成本', D.labor, 'yellow'),
+    kpiWithChg('运营管理费', D.opex),
+    kpiHTML('固定工资', fmt(sumRange(D.labor_fixed)), '占人力 '+pct(laborSum?sumRange(D.labor_fixed)/laborSum:0)),
+    kpiHTML('奖金', fmt(sumRange(D.labor_bonus)), '占人力 '+pct(laborSum?sumRange(D.labor_bonus)/laborSum:0)),
+    kpiHTML('房租水电', fmt(sumRange(D.opex_rent)), '月均 '+fmt(sumRange(D.opex_rent)/R.length)),
+  ].join('');
+
+  // Labor stacked
+  const laborItems = [
+    {name:'固定工资',d:D.labor_fixed,c:COLORS[0]},
+    {name:'奖金',d:D.labor_bonus,c:COLORS[1]},
+    {name:'社保',d:D.labor_social,c:COLORS[2]},
+    {name:'公积金',d:D.labor_house,c:COLORS[3]},
+    {name:'劳务费',d:D.labor_liwu,c:COLORS[4]},
+    {name:'福利费',d:D.labor_welf,c:COLORS[5]},
+    {name:'加班补贴',d:D.labor_ot,c:COLORS[6]},
+  ];
+  makeChart('c-labor', {
+    type:'bar',
+    data:{labels:L, datasets:laborItems.map(x=>stackBarDS(x.name, sliceRange(x.d), x.c))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // Opex trend
+  const opexItems = [
+    {name:'房租水电',d:D.opex_rent,c:COLORS[0]},
+    {name:'办公费',d:D.opex_office,c:COLORS[1]},
+    {name:'差旅费',d:D.opex_travel,c:COLORS[2]},
+    {name:'咨询服务',d:D.opex_consult,c:COLORS[3]},
+    {name:'软件费',d:D.opex_soft,c:COLORS[4]},
+    {name:'视频制作',d:D.opex_video,c:COLORS[5]},
+  ];
+  makeChart('c-opex', {
+    type:'line',
+    data:{labels:L, datasets:opexItems.map(x=>lineDS(x.name, sliceRange(x.d), x.c))},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{grid:{display:false}}, y:{ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // ══════════════════════════════════════════════════════
+  // PROFIT TAB
+  // ══════════════════════════════════════════════════════
+  const preTaxSum = sumRange(D.pre_tax);
+  const mgmtSum = sumRange(D.mgmt);
+  const taxSum = sumRange(D.tax);
+  document.getElementById('kpi-profit').innerHTML = [
+    kpiHTML('前后端合计', fmt(sumRange(D.fe_be)), '前端毛利+后端息税前利润'),
+    kpiHTML('税前利润', fmt(preTaxSum), '净利率 '+pct(totalRevSum?preTaxSum/totalRevSum:0), preTaxSum>=0?'green':'red'),
+    kpiHTML('总经办费用', fmt(mgmtSum), '月均 '+fmt(mgmtSum/R.length), 'yellow'),
+    kpiHTML('税金', fmt(taxSum), '月均 '+fmt(taxSum/R.length)),
+    kpiHTML('净利润', fmt(netSum), '净利率 '+pct(totalRevSum?netSum/totalRevSum:0), netSum>=0?'green':'red'),
+  ].join('');
+
+  // Profit compare
+  makeChart('c-profit-compare', {
+    type:'line',
+    data:{labels:L, datasets:[
+      lineDS('前端毛利', sliceRange(D.fe_margin), '#4f9cf9', true),
+      lineDS('后端息税前利润', sliceRange(D.ebit), '#34d399', true),
+      lineDS('净利润', sliceRange(D.net_profit), '#fbbf24'),
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{x:{grid:{display:false}}, y:{ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'top'}}
+    }
+  });
+
+  // Profit table
+  const tP = document.getElementById('t-profit');
+  tP.querySelector('thead').innerHTML = thHtml;
+  const profitRows = [
+    {name:'前端收入',d:D.fe_rev}, {name:'前端成本',d:D.fe_cost}, {name:'前端毛利',d:D.fe_margin,cls:'total-row'},
+    {name:'后端收入(支付)',d:D.be_rev}, {name:'后端成本',d:D.be_cost}, {name:'后端毛利',d:D.be_margin,cls:'total-row'},
+    {name:'人力成本',d:D.labor}, {name:'运营管理费',d:D.opex},
+    {name:'后端息税前利润',d:D.ebit,cls:'total-row'},
+    {name:'前后端合计',d:D.fe_be},
+    {name:'财务费用',d:D.financial}, {name:'折旧摊销',d:D.depr},
+    {name:'营业外收入',d:D.non_op_in}, {name:'营业外支出',d:D.non_op_out},
+    {name:'税前利润',d:D.pre_tax,cls:'total-row'},
+    {name:'总经办费用',d:D.mgmt}, {name:'税金',d:D.tax},
+    {name:'净利润',d:D.net_profit,cls:'total-row'},
+  ];
+  tP.querySelector('tbody').innerHTML = profitRows.map(r=>{
+    const vals = sliceRange(r.d);
+    const s = vals.reduce((a,b)=>a+b,0);
+    const cls = r.cls||'';
+    return `<tr class="${cls}"><td>${r.name}</td>${vals.map(v=>`<td class="${v>=0?'':'neg'}">${fmt(v)}</td>`).join('')}<td class="${s>=0?'':'neg'}">${fmt(s)}</td></tr>`;
+  }).join('');
+
+  // Update header period
+  document.getElementById('hPeriod').textContent = MONTHS_FULL[startIdx]+' — '+MONTHS_FULL[endIdx];
+  document.getElementById('fSum').textContent = '已选 '+R.length+' 个月';
+}
+
+// ══════════════════════════════════════════════════════════
+// FILTER LOGIC
+// ══════════════════════════════════════════════════════════
+const sStart = document.getElementById('sStart');
+const sEnd = document.getElementById('sEnd');
+MONTHS_FULL.forEach((m,i) => {
+  sStart.innerHTML += `<option value="${i}" ${i===0?'selected':''}>${m}</option>`;
+  sEnd.innerHTML += `<option value="${i}" ${i===14?'selected':''}>${m}</option>`;
+});
+sStart.onchange = sEnd.onchange = () => {
+  startIdx = parseInt(sStart.value);
+  endIdx = parseInt(sEnd.value);
+  if(endIdx < startIdx) { endIdx = startIdx; sEnd.value = endIdx; }
+  document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
+  renderAll();
+};
+
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const r = btn.dataset.r;
+    if(r==='all') { startIdx=0; endIdx=14; }
+    else if(r==='6m') { startIdx=9; endIdx=14; }
+    else if(r==='12m') { startIdx=3; endIdx=14; }
+    else if(r==='y25') { startIdx=0; endIdx=11; }
+    else if(r==='y26') { startIdx=12; endIdx=14; }
+    sStart.value = startIdx;
+    sEnd.value = endIdx;
+    renderAll();
+  };
+});
+
+// ── TAB SWITCHING ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('pn-'+tab.dataset.tab).classList.add('active');
+    // Re-render to fix chart sizing after display:none
+    setTimeout(()=>{
+      Object.values(charts).forEach(c=>c.resize());
+    }, 50);
+  };
+});
+
+// ── INITIAL RENDER ──
+renderAll();
+</script>
+</body>
+</html>
