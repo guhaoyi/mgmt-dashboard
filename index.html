@@ -224,6 +224,29 @@ const pctAbs=v=>v==null?'—':((v*100).toFixed(1))+'%';
 
 // CHART SETUP
 Chart.register(ChartDataLabels);
+// Crosshair vertical line plugin
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw(chart) {
+    if (chart.tooltip && chart.tooltip._active && chart.tooltip._active.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      const topY = chart.scales.y ? chart.scales.y.top : chart.chartArea.top;
+      const bottomY = chart.scales.y ? chart.scales.y.bottom : chart.chartArea.bottom;
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(139,150,180,0.5)';
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+Chart.register(crosshairPlugin);
+
 Chart.defaults.color='#8896b0';
 Chart.defaults.borderColor='rgba(30,35,51,0.6)';
 Chart.defaults.font.family="'JetBrains Mono','Noto Sans SC',sans-serif";
