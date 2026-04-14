@@ -1,0 +1,15 @@
+{
+  "lastSync": "2026-04-14T12:30:52.995Z",
+  "lastResult": "success",
+  "lastError": null,
+  "dataVersion": "2026-04-14T12:29:27.534Z",
+  "htmlVersion": "2026-04-14T12:30:52.997Z",
+  "steps": [
+    "读取数据文件...",
+    "✓ 数据读取完成 (58 个字段)",
+    "注入数据到 HTML...",
+    "✓ 数据注入完成",
+    "写入文件...",
+    "✓ v2-full.html + index.html 已更新"
+  ]
+}
