@@ -178,7 +178,7 @@ Chart.defaults.font.size=10;
 Chart.defaults.plugins.legend.labels.boxWidth=10;
 Chart.defaults.plugins.legend.labels.padding=10;
 Chart.defaults.plugins.datalabels.display=false; // off by default
-const crosshairPlugin={id:'crosshair',afterDraw(chart){if(chart.tooltip?._active?.length){const ctx=chart.ctx;const x=chart.tooltip._active[0].element.x;const top=chart.chartArea.top;const bottom=chart.chartArea.bottom;ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(139,150,180,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.restore()}}};
+const crosshairPlugin={id:'crosshair',afterDraw(chart){if(chart.config.type==='doughnut'||chart.config.type==='pie')return;if(chart.tooltip?._active?.length){const ctx=chart.ctx;const els=chart.tooltip._active;const xs=els.map(e=>e.element.x);const x=(Math.min(...xs)+Math.max(...xs))/2;const top=chart.chartArea.top;const bottom=chart.chartArea.bottom;ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(139,150,180,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.restore()}}};
 Chart.register(crosshairPlugin);
 const CL=['#5b9df5','#3dd9a0','#f06868','#f0b840','#a78bfa','#fb923c','#38bdf8','#f472b6','#818cf8','#2dd4bf','#e879f9','#84cc16'];
 const al=(c,a)=>{const m=c.match(/\w\w/g).map(x=>parseInt(x,16));return`rgba(${m[0]},${m[1]},${m[2]},${a})`};
@@ -280,7 +280,7 @@ const costMom=momGrowth(D.fe_cost.map((v,i)=>v+D.be_cost[i]+D.labor[i]+D.opex[i]
 const netMom=momGrowth(D.net_profit);
 mk('c-ov6',{type:'line',data:{labels:Lb,datasets:[
   lineDS('收入环比',revMom,CL[0]),lineDS('成本环比',costMom,CL[2]),lineDS('净利润环比',netMom,CL[3]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)},grid:{color:'rgba(30,35,51,.3)'}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)},grid:{color:'rgba(30,35,51,.3)'}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
 
 // OV7: Waterfall
 const wfL=['前端收入','前端成本','前端毛利','后端收入','后端成本','后端毛利','人力成本','运营管理','总经办','税金','净利润'];
@@ -327,7 +327,7 @@ mk('c-fe2',{type:'doughnut',data:{labels:fePie.map(x=>x.n),datasets:[{data:fePie
 const dyPct=R().map(i=>D.fe_rev[i]?D.fe_douyin[i]/D.fe_rev[i]:0);
 mk('c-fe3',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('抖音占比',dyPct,'#5b9df5',true),datalabels:{display:true,color:'#5b9df5',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,max:1,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,max:1,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 // FE4: Cost stacked
 mk('c-fe4',{type:'bar',data:{labels:Lb,datasets:feCostItems.map(x=>stackDS(x.n,sl(x.d),x.c))},
@@ -343,7 +343,7 @@ mk('c-fe5',{type:'doughnut',data:{labels:fcPie.map(x=>x.n),datasets:[{data:fcPie
 const adRatio=R().map(i=>D.fe_rev[i]?D.fe_ad[i]/D.fe_rev[i]:0);
 mk('c-fe6',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('广告投放/收入',adRatio,'#f06868',true),datalabels:{display:true,color:'#f06868',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 // FE7: Margin + margin rate
 const feMD=sl(D.fe_margin);
@@ -352,7 +352,7 @@ mk('c-fe7',{type:'bar',data:{labels:Lb,datasets:[
   {label:'前端毛利',data:feMD,backgroundColor:feMD.map(v=>v>=0?al('#3dd9a0',.6):al('#f06868',.6)),borderRadius:3,
     datalabels:{display:true,color:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'#3dd9a0':'#f06868',anchor:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'end':'start',align:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'top':'bottom',font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}},
   {...lineDS('毛利率',feMR,'#f0b840'),type:'line',yAxisID:'y1',order:0,datalabels:{display:false}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}},y1:{position:'right',ticks:{callback:v=>pctAbs(v)},grid:{display:false}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}},y1:{position:'right',ticks:{callback:v=>pctAbs(v)},grid:{display:false}}},plugins:{legend:{position:'top'},tooltip:TT}}});
 
 // FE8: Cost items / revenue ratio
 const costRatios=feCostItems.map(x=>({n:x.n,d:R().map(i=>D.fe_rev[i]?D[x.d===D.fe_ad?'fe_ad':x.d===D.fe_print?'fe_print':x.d===D.fe_express?'fe_express':x.d===D.fe_plat?'fe_plat':'fe_live'][i]/D.fe_rev[i]:0),c:x.c}));
@@ -361,7 +361,7 @@ const feRatioSeries=[
   {n:'广告投放率',k:'fe_ad',c:CL[0]},{n:'印刷成本率',k:'fe_print',c:CL[1]},{n:'快递包材率',k:'fe_express',c:CL[2]},{n:'平台费率',k:'fe_plat',c:CL[3]}
 ];
 mk('c-fe8',{type:'line',data:{labels:Lb,datasets:feRatioSeries.map(s=>lineDS(s.n,R().map(i=>D.fe_rev[i]?D[s.k][i]/D.fe_rev[i]:0),s.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
 
 // FE table
 buildTbl('t-fe',Lb,[
@@ -395,7 +395,7 @@ mk('c-be2',{type:'doughnut',data:{labels:bePie.map(x=>x.n),datasets:[{data:bePie
 const xtPct=R().map(i=>D.be_rev[i]?D.be_xt[i]/D.be_rev[i]:0);
 mk('c-be3',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('小鹅通占比',xtPct,'#5b9df5',true),datalabels:{display:true,color:'#5b9df5',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,max:1,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,max:1,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 mk('c-be4',{type:'bar',data:{labels:Lb,datasets:beCostItems.map(x=>stackDS(x.n,sl(x.d),x.c))},
   options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
@@ -408,18 +408,18 @@ mk('c-be5',{type:'doughnut',data:{labels:bcPie.map(x=>x.n),datasets:[{data:bcPie
 const beCostRate=R().map(i=>D.be_rev[i]?D.be_cost[i]/D.be_rev[i]:0);
 mk('c-be6',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('后端成本率',beCostRate,'#f06868',true),datalabels:{display:true,color:'#f06868',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 const beMD=sl(D.be_margin);
 const beMR=R().map(i=>D.be_rev[i]?D.be_margin[i]/D.be_rev[i]:0);
 mk('c-be7',{type:'bar',data:{labels:Lb,datasets:[
   {...barDS('后端毛利',beMD,CL[1]),datalabels:{display:true,color:'#3dd9a0',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}},
   {...lineDS('毛利率',beMR,'#f0b840'),type:'line',yAxisID:'y1',order:0,datalabels:{display:false}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}},y1:{position:'right',min:0,max:1,ticks:{callback:v=>pctAbs(v)},grid:{display:false}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}},y1:{position:'right',min:0,max:1,ticks:{callback:v=>pctAbs(v)},grid:{display:false}}},plugins:{legend:{position:'top'},tooltip:TT}}});
 
 // BE8: FE vs BE revenue comparison
 mk('c-be8',{type:'line',data:{labels:Lb,datasets:[lineDS('前端收入',sl(D.fe_rev),CL[0]),lineDS('后端收入',sl(D.be_rev),CL[1])]},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
 
 buildTbl('t-be',Lb,[
   {n:'后端收入合计',d:D.be_rev,t:1},
@@ -455,13 +455,13 @@ const labCR=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.labor[i]/r:0}
 const opCR=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.opex[i]/r:0});
 mk('c-co3',{type:'line',data:{labels:Lb,datasets:[
   lineDS('前端成本率',feCR,CL[0]),lineDS('人力成本率',labCR,CL[3]),lineDS('运营管理率',opCR,CL[4]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
 
 // Cost MoM
 mk('c-co4',{type:'line',data:{labels:Lb,datasets:[
   lineDS('前端成本',momGrowth(D.fe_cost),CL[0]),lineDS('人力成本',momGrowth(D.labor),CL[3]),
   lineDS('运营管理',momGrowth(D.opex),CL[4]),lineDS('税金',momGrowth(D.tax),CL[2]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
 
 buildTbl('t-co',Lb,[
   {n:'前端成本',d:D.fe_cost,t:1},{n:'后端成本',d:D.be_cost,t:1},
@@ -502,7 +502,7 @@ mk('c-hr3',{type:'bar',data:{labels:Lb,datasets:[
 const hrRatio=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.labor[i]/r:0});
 mk('c-hr4',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('人力成本/总收入',hrRatio,'#f06868',true),datalabels:{display:true,color:'#f06868',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 // Anomaly: severance + overtime
 mk('c-hr5',{type:'bar',data:{labels:Lb,datasets:[
@@ -527,7 +527,7 @@ document.getElementById('k-opex').innerHTML=[
 ].join('');
 
 mk('c-op1',{type:'line',data:{labels:Lb,datasets:opItems.map(x=>lineDS(x.n,sl(x.d),x.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
 
 const opPie=opItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-op2',{type:'doughnut',data:{labels:opPie.map(x=>x.n),datasets:[{data:opPie.map(x=>x.v),backgroundColor:opPie.map(x=>al(x.c,.75)),borderWidth:0}]},
@@ -537,7 +537,7 @@ mk('c-op2',{type:'doughnut',data:{labels:opPie.map(x=>x.n),datasets:[{data:opPie
 const opRatio=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.opex[i]/r:0});
 mk('c-op3',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('运营费/总收入',opRatio,'#a78bfa',true),datalabels:{display:true,color:'#a78bfa',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>v?pctAbs(v):''}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{min:0,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 // TOP ranking horizontal bar
 const opRank=opItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).sort((a,b)=>b.v-a.v);
@@ -579,7 +579,7 @@ const beMRate=R().map(i=>D.be_rev[i]?D.be_margin[i]/D.be_rev[i]:0);
 const netRate=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.net_profit[i]/r:0});
 mk('c-pf2',{type:'line',data:{labels:Lb,datasets:[
   lineDS('前端毛利率',feMRate,CL[0]),lineDS('后端毛利率',beMRate,CL[1]),lineDS('净利率',netRate,CL[3]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)},grid:{color:'rgba(30,35,51,.3)'}}},
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>pctAbs(v)},grid:{color:'rgba(30,35,51,.3)'}}},
   plugins:{legend:{position:'top'},tooltip:TT_PCT}}});
 
 // PF3: Net profit pos/neg bars
@@ -599,7 +599,7 @@ sl(D.net_profit).forEach(v=>{cumSum+=v;cumNP.push(cumSum)});
 mk('c-pf4',{type:'line',data:{labels:Lb,datasets:[
   {...lineDS('累计净利润',cumNP,'#f0b840',true),
     datalabels:{display:true,color:'#f0b840',anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
   plugins:{legend:{display:false},tooltip:TT}}});
 
 // PF5: Tax + mgmt
