@@ -178,12 +178,20 @@ Chart.defaults.font.size=10;
 Chart.defaults.plugins.legend.labels.boxWidth=10;
 Chart.defaults.plugins.legend.labels.padding=10;
 Chart.defaults.plugins.datalabels.display=false; // off by default
+const crosshairPlugin={id:'crosshair',afterDraw(chart){if(chart.tooltip?._active?.length){const ctx=chart.ctx;const x=chart.tooltip._active[0].element.x;const top=chart.chartArea.top;const bottom=chart.chartArea.bottom;ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(139,150,180,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.restore()}}};
+Chart.register(crosshairPlugin);
 const CL=['#5b9df5','#3dd9a0','#f06868','#f0b840','#a78bfa','#fb923c','#38bdf8','#f472b6','#818cf8','#2dd4bf','#e879f9','#84cc16'];
 const al=(c,a)=>{const m=c.match(/\w\w/g).map(x=>parseInt(x,16));return`rgba(${m[0]},${m[1]},${m[2]},${a})`};
 
-const TT={backgroundColor:'#1a1e2e',borderColor:'#2e3450',borderWidth:1,padding:12,titleFont:{size:11,weight:'600'},bodyFont:{size:11},cornerRadius:6,
-  callbacks:{label:ctx=>{const v=ctx.parsed.y!=null?ctx.parsed.y:(ctx.parsed||0);return' '+ctx.dataset.label+': '+fmtFull(v)}}};
-const TT_PCT={...TT,callbacks:{label:ctx=>' '+ctx.dataset.label+': '+pctAbs(ctx.parsed.y)}};
+const TT_BASE={backgroundColor:'#1a1e2e',borderColor:'#2e3450',borderWidth:1,padding:12,titleFont:{size:11,weight:'600'},bodyFont:{size:11},cornerRadius:6};
+const TT={...TT_BASE,callbacks:{label:ctx=>{const v=ctx.parsed.y!=null?ctx.parsed.y:(ctx.parsed||0);const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+fmtFull(v)}}};
+const TT_PCT={...TT_BASE,callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+pctAbs(ctx.parsed.y)}}};
+const TT_PIE={...TT_BASE,callbacks:{label:ctx=>{const n=ctx.label||'';const v=ctx.parsed;const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return' '+n+': '+fmtFull(v)+' ('+pctAbs(v/t)+')'}}};
+const TT_BAR={...TT_BASE,mode:'index',intersect:false,
+  filter:(item,_,items)=>{const hit=items.filter(i=>i.element&&i.element.inRange&&i.element.inRange(i.element.tooltipPosition().x,i.element.tooltipPosition().y));if(hit.length>0){const hitDS=hit.map(h=>h.datasetIndex);return hitDS.includes(item.datasetIndex)}return true},
+  callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+fmtFull(ctx.parsed.y)}}};
+const TT_BAR_PCT={...TT_BASE,mode:'index',intersect:false,
+  callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+pctAbs(ctx.parsed.y)}}};
 
 const charts={};
 function mk(id,cfg){if(charts[id])charts[id].destroy();const c=document.getElementById(id);if(!c)return;charts[id]=new Chart(c,cfg);return charts[id]}
@@ -247,24 +255,24 @@ mk('c-ov1',{type:'bar',data:{labels:Lb,datasets:[
 // OV2: Revenue pie
 const pieData=[{n:'前端',v:feR,c:CL[0]},{n:'后端',v:beR,c:CL[1]}];
 mk('c-ov2',{type:'doughnut',data:{labels:pieData.map(x=>x.n),datasets:[{data:pieData.map(x=>x.v),backgroundColor:pieData.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:11,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return pctAbs(v/t)}}}}});
 
 // OV3: FE vs BE monthly grouped bar
 mk('c-ov3',{type:'bar',data:{labels:Lb,datasets:[barDS('前端收入',sl(D.fe_rev),CL[0]),barDS('后端收入',sl(D.be_rev),CL[1])]},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // OV4: Cost structure pie
 const costPie=[{n:'前端成本',v:feC,c:CL[0]},{n:'后端成本',v:beC,c:CL[1]},{n:'人力成本',v:labS,c:CL[3]},{n:'运营管理',v:opS,c:CL[4]},{n:'总经办',v:mgS,c:CL[5]},{n:'税金',v:txS,c:CL[2]}];
 mk('c-ov4',{type:'doughnut',data:{labels:costPie.map(x=>x.n),datasets:[{data:costPie.map(x=>x.v),backgroundColor:costPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.05?pctAbs(v/t):''}}}}});
 
 // OV5: Monthly total cost trend stacked
 mk('c-ov5',{type:'bar',data:{labels:Lb,datasets:[
   stackDS('前端成本',sl(D.fe_cost),CL[0]),stackDS('后端成本',sl(D.be_cost),CL[1]),
   stackDS('人力成本',sl(D.labor),CL[3]),stackDS('运营管理',sl(D.opex),CL[4]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // OV6: MoM growth rates
 const revMom=momGrowth(D.fe_rev.map((v,i)=>v+D.be_rev[i]));
@@ -307,12 +315,12 @@ document.getElementById('k-fe').innerHTML=[
 
 // FE1: Platform revenue stacked
 mk('c-fe1',{type:'bar',data:{labels:Lb,datasets:fePlat.map(p=>stackDS(p.n,sl(p.d),p.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // FE2: Platform pie
 const fePie=fePlat.map(p=>({n:p.n,v:sm(p.d),c:p.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-fe2',{type:'doughnut',data:{labels:fePie.map(x=>x.n),datasets:[{data:fePie.map(x=>x.v),backgroundColor:fePie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.04?pctAbs(v/t):''}}}}});
 
 // FE3: Douyin concentration trend
@@ -323,12 +331,12 @@ mk('c-fe3',{type:'line',data:{labels:Lb,datasets:[
 
 // FE4: Cost stacked
 mk('c-fe4',{type:'bar',data:{labels:Lb,datasets:feCostItems.map(x=>stackDS(x.n,sl(x.d),x.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // FE5: Cost pie
 const fcPie=feCostItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-fe5',{type:'doughnut',data:{labels:fcPie.map(x=>x.n),datasets:[{data:fcPie.map(x=>x.v),backgroundColor:fcPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.05?pctAbs(v/t):''}}}}});
 
 // FE6: Ad spend / revenue ratio
@@ -377,11 +385,11 @@ document.getElementById('k-be').innerHTML=[
 ].join('');
 
 mk('c-be1',{type:'bar',data:{labels:Lb,datasets:bePlat.map(p=>stackDS(p.n,sl(p.d),p.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 const bePie=bePlat.map(p=>({n:p.n,v:Math.max(0,sm(p.d)),c:p.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-be2',{type:'doughnut',data:{labels:bePie.map(x=>x.n),datasets:[{data:bePie.map(x=>x.v),backgroundColor:bePie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:10,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.03?pctAbs(v/t):''}}}}});
 
 const xtPct=R().map(i=>D.be_rev[i]?D.be_xt[i]/D.be_rev[i]:0);
@@ -390,11 +398,11 @@ mk('c-be3',{type:'line',data:{labels:Lb,datasets:[
 ]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{min:0,max:1,ticks:{callback:v=>pctAbs(v)}}},plugins:{legend:{display:false},tooltip:TT_PCT}}});
 
 mk('c-be4',{type:'bar',data:{labels:Lb,datasets:beCostItems.map(x=>stackDS(x.n,sl(x.d),x.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 const bcPie=beCostItems.map(x=>({n:x.n,v:Math.max(0,sm(x.d)),c:x.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-be5',{type:'doughnut',data:{labels:bcPie.map(x=>x.n),datasets:[{data:bcPie.map(x=>x.v),backgroundColor:bcPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.05?pctAbs(v/t):''}}}}});
 
 const beCostRate=R().map(i=>D.be_rev[i]?D.be_cost[i]/D.be_rev[i]:0);
@@ -435,10 +443,10 @@ mk('c-co1',{type:'bar',data:{labels:Lb,datasets:[
   stackDS('前端成本',sl(D.fe_cost),CL[0]),stackDS('后端成本',sl(D.be_cost),CL[1]),
   stackDS('人力成本',sl(D.labor),CL[3]),stackDS('运营管理',sl(D.opex),CL[4]),
   stackDS('总经办',sl(D.mgmt),CL[5]),stackDS('税金',sl(D.tax),CL[2]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 mk('c-co2',{type:'doughnut',data:{labels:costPie.map(x=>x.n),datasets:[{data:costPie.map(x=>x.v),backgroundColor:costPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.04?pctAbs(v/t):''}}}}});
 
 // Cost / revenue ratios
@@ -476,11 +484,11 @@ document.getElementById('k-hr').innerHTML=[
 ].join('');
 
 mk('c-hr1',{type:'bar',data:{labels:Lb,datasets:labItems.map(x=>stackDS(x.n,sl(x.d),x.c))},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 const hrPie=labItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-hr2',{type:'doughnut',data:{labels:hrPie.map(x=>x.n),datasets:[{data:hrPie.map(x=>x.v),backgroundColor:hrPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.05?pctAbs(v/t):''}}}}});
 
 // Fixed vs variable
@@ -488,7 +496,7 @@ const fixedD=sl(D.labor_fixed);
 const varD=R().map(i=>D.labor[i]-D.labor_fixed[i]);
 mk('c-hr3',{type:'bar',data:{labels:Lb,datasets:[
   stackDS('固定工资',fixedD,CL[0]),stackDS('浮动薪酬',varD,CL[1]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // HR / revenue ratio
 const hrRatio=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.labor[i]/r:0});
@@ -499,7 +507,7 @@ mk('c-hr4',{type:'line',data:{labels:Lb,datasets:[
 // Anomaly: severance + overtime
 mk('c-hr5',{type:'bar',data:{labels:Lb,datasets:[
   barDS('辞退补偿金',sl(D.labor_sev),'#f06868'),barDS('加班补贴',sl(D.labor_ot),'#f0b840'),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 buildTbl('t-hr',Lb,[
   {n:'人力成本合计',d:D.labor,t:1},
@@ -523,7 +531,7 @@ mk('c-op1',{type:'line',data:{labels:Lb,datasets:opItems.map(x=>lineDS(x.n,sl(x.
 
 const opPie=opItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 mk('c-op2',{type:'doughnut',data:{labels:opPie.map(x=>x.n),datasets:[{data:opPie.map(x=>x.v),backgroundColor:opPie.map(x=>al(x.c,.75)),borderWidth:0}]},
-  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT,
+  options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'right'},tooltip:TT_PIE,
     datalabels:{display:true,color:'#e4eaf2',font:{size:9,weight:'600',family:'JetBrains Mono'},formatter:(v,ctx)=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return v/t>.05?pctAbs(v/t):''}}}}});
 
 const opRatio=R().map(i=>{const r=D.fe_rev[i]+D.be_rev[i];return r?D.opex[i]/r:0});
@@ -535,8 +543,8 @@ mk('c-op3',{type:'line',data:{labels:Lb,datasets:[
 const opRank=opItems.map(x=>({n:x.n,v:sm(x.d),c:x.c})).sort((a,b)=>b.v-a.v);
 mk('c-op4',{type:'bar',data:{labels:opRank.map(x=>x.n),datasets:[{data:opRank.map(x=>x.v),backgroundColor:opRank.map(x=>al(x.c,.7)),borderRadius:4,
   datalabels:{display:true,color:'#e4eaf2',anchor:'end',align:'right',font:{size:9,family:'JetBrains Mono'},formatter:v=>fmt(v)}}]},
-  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{x:{ticks:{callback:v=>fmt(v)},grid:{color:'rgba(30,35,51,.2)'}},y:{grid:{display:false}}},
-  plugins:{legend:{display:false},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},indexAxis:'y',scales:{x:{ticks:{callback:v=>fmt(v)},grid:{color:'rgba(30,35,51,.2)'}},y:{grid:{display:false}}},
+  plugins:{legend:{display:false},tooltip:TT_BAR}}});
 
 buildTbl('t-op',Lb,[
   {n:'运营管理费合计',d:D.opex,t:1},
@@ -582,8 +590,8 @@ mk('c-pf3',{type:'bar',data:{labels:Lb,datasets:[{label:'净利润',data:npD,
     anchor:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'end':'start',
     align:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'top':'bottom',
     font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}}]},
-  options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
-  plugins:{legend:{display:false},tooltip:TT}}});
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
+  plugins:{legend:{display:false},tooltip:TT_BAR}}});
 
 // PF4: Cumulative net profit
 const cumNP=[];let cumSum=0;
@@ -597,8 +605,8 @@ mk('c-pf4',{type:'line',data:{labels:Lb,datasets:[
 // PF5: Tax + mgmt
 mk('c-pf5',{type:'bar',data:{labels:Lb,datasets:[
   barDS('税金',sl(D.tax),CL[2]),barDS('总经办费用',sl(D.mgmt),CL[5]),
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
-  plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
+  plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // PF6: YoY Q1 comparison
 const q1_25={feRev:D.fe_rev.slice(0,3).reduce((a,b)=>a+b,0),beRev:D.be_rev.slice(0,3).reduce((a,b)=>a+b,0),
@@ -615,8 +623,8 @@ const yoy26=[q1_26.feRev,q1_26.beRev,q1_26.feM,q1_26.beM,q1_26.labor,q1_26.net];
 mk('c-pf6',{type:'bar',data:{labels:yoyLabels,datasets:[
   {...barDS('2025 Q1',yoy25,CL[0]),datalabels:{display:true,color:CL[0],anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}},
   {...barDS('2026 Q1',yoy26,CL[1]),datalabels:{display:true,color:CL[1],anchor:'end',align:'top',font:{size:8,family:'JetBrains Mono'},formatter:v=>fmt(v)}},
-]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
-  plugins:{legend:{position:'top'},tooltip:TT}}});
+]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmt(v)}}},
+  plugins:{legend:{position:'top'},tooltip:TT_BAR}}});
 
 // Profit table
 buildTbl('t-pf',Lb,[
