@@ -189,7 +189,9 @@ const TT_PCT={...TT_BASE,callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.l
 const TT_PIE={...TT_BASE,callbacks:{label:ctx=>{const n=ctx.label||'';const v=ctx.parsed;const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return' '+n+': '+fmtFull(v)+' ('+pctAbs(v/t)+')'}}};
 const TT_BAR={...TT_BASE,mode:'index',intersect:false,
   filter:(item,_,items)=>{const hit=items.filter(i=>i.element&&i.element.inRange&&i.element.inRange(i.element.tooltipPosition().x,i.element.tooltipPosition().y));if(hit.length>0){const hitDS=hit.map(h=>h.datasetIndex);return hitDS.includes(item.datasetIndex)}return true},
-  callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+fmtFull(ctx.parsed.y)}}};
+  callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+fmtFull(ctx.parsed.y)},
+    footer:items=>{if(items.length<=1)return'';const t=items.reduce((s,i)=>{const v=i.parsed.y||i.parsed||0;return s+(typeof v==='number'?v:0)},0);return'  合计: '+fmtFull(t)},
+  },footerFont:{weight:'700',size:12},footerColor:'#7ecbff'};
 const TT_BAR_PCT={...TT_BASE,mode:'index',intersect:false,
   callbacks:{label:ctx=>{const n=ctx.dataset.label||ctx.label||'';return' '+n+': '+pctAbs(ctx.parsed.y)}}};
 
